@@ -3,4 +3,7 @@ project(RayTracer)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(RayTracer main.cpp)
+add_executable(RayTracer main.cpp
+        classes.h
+        renderer.h
+        BMP.h)
