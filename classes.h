@@ -78,18 +78,7 @@ public:
     Camera() = default;
 };
 
-class Light {
-public:
-    Vec3 origin;
-    float intensity;
 
-    Light() = default;
-
-    Light(const Vec3 &origin, float intensity)
-        : origin(origin),
-          intensity(intensity) {
-    }
-};
 
 class Hit_record {
 };
@@ -114,6 +103,25 @@ public:
 
     Color clampOne() {
         return {std::min(1.0f,r), std::min(1.0f,g), std::min(1.0f,b)};
+    }
+};
+class Light {
+public:
+    Vec3 origin;
+    float intensity;
+    Color color;
+
+    Light() = default;
+
+    Light(const Vec3 &origin, float intensity, const Color &color)
+        : origin(origin),
+          intensity(intensity),
+          color(color) {
+    }
+    Light(const Vec3 &origin, float intensity)
+        : origin(origin),
+          intensity(intensity),
+          color(Color(1,1,1)) {
     }
 };
 class Material {
@@ -229,7 +237,7 @@ class Rectangle : public RObj {
     }
 
     Rectangle(const Vec3 &p0, const Vec3 &p1, const Vec3 &p2, const Material &material)
-        : RObj(p0, material), aV(p1-p0), bV(p2-p0), nV((p1-p0).cross(p2-p0).normalize()) {
+        : RObj(p0, material), aV(p1-p0), bV(p2-p0), nV((p1-p0).cross(p2-p0).normalize()) { std::cout << nV.x << ", " << nV.y << ", " << nV.z << std::endl << aV.x << ", " << aV.y << ", " << aV.z << std::endl << bV.x << ", " << bV.y << ", " << bV.z << std::endl;
     }
 };
 

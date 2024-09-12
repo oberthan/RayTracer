@@ -66,6 +66,10 @@ struct BMP {
         fileHeader.file_size = fileHeader.offset_data + infoHeader.size_image;
     }
 
+    BMP(std::string fileName){
+        read(fileName);
+    }
+
     // Destructor to clean up dynamically allocated memory
     ~BMP() {
         delete[] pixelData;
@@ -112,6 +116,13 @@ struct BMP {
 
         outFile.close();
         std::cout << "BMP saved as " << fileName << std::endl;
+    }
+    BMP read(std::string fileName) {
+        std::ifstream inFile(fileName, std::ios::binary);
+        if (!inFile) {
+            std::cerr << "Error opening file!" << std::endl;
+
+        }
     }
 };
 
