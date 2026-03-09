@@ -9,21 +9,28 @@ using namespace std;
 
 Scene initializeScene() {
     Scene scene;
-    scene.camera.origin = Vec3(0, 0, 0);
+    scene.camera.origin = Vec3(0, 1, 0);
     scene.camera.direction = Vec3(0, 0, 1);
-    scene.camera.height = 360;
-    scene.camera.width = 640;
-    scene.camera.focal_length = 120;
+    scene.camera.width = 880;
+    scene.camera.height = scene.camera.width*9/16;
+    scene.camera.focal_length = 300;
 
-    const auto sphere = new Sphere(0.65f,Vec3(-2.25f,1,4),Material(Color(0.1f,0.2f,1.0f), 0.0f, 0.2f));
+    // Diffuse blue sphere
+    scene.objects.push_back(new Sphere(0.65f, Vec3(-1.25f, 0.65f, 4),
+        Material(Color(0.1f, 0.2f, 1.0f), 1.0f, 0.0f)));
 
-    scene.objects.push_back(sphere);
-    scene.objects.push_back(new Sphere(1.5f, Vec3(1.75f, 1.5f, 4.5f), Material(Color(0.09f,1.0f,0.3f), 0.0f, 0.5f)));
+    // Rough metal sphere
+    scene.objects.push_back(new Sphere(1.5f, Vec3(1.75f, 1.5f, 4.5f),
+        Material(Color(0.0f, 0.8f, 0.0f), 0.2f, 1.0f)));
 
-    scene.objects.push_back(new Rectangle(Vec3(3, -0.01, 0), Vec3(-3,-0.0f,0), Vec3(3,-0.0f, 10), Material(Color(0.99f,1,1.0f), 10, 0.1f)));
+    // Floor
+    scene.objects.push_back(new Rectangle(
+        Vec3(5, 0, -2), Vec3(-5, 0, -2), Vec3(5, 0, 12),
+        Material(Color(0.8f, 0.8f, 0.8f), 1.0f, 0.0f)));
 
-
-    scene.lights.push_back(Light(Vec3(-2,3.5f,1),6, Color(1,1,1)));
+    // Emissive light sphere
+    scene.objects.push_back(new Sphere(0.5f, Vec3(0, 4.0f, 3),
+        Material::Emissive(Color(1.0f, 0.95f, 0.8f), 15.0f)));
 
     return scene;
 }
