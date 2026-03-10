@@ -11,9 +11,9 @@ Scene initializeScene() {
     Scene scene;
     scene.camera.origin = Vec3(0, 1, 0);
     scene.camera.direction = Vec3(0, 0, 1);
-    scene.camera.width = 220;
+    scene.camera.width = 880;
     scene.camera.height = scene.camera.width*9/16;
-    scene.camera.focal_length = 75;
+    scene.camera.focal_length = 300;
 
     // Diffuse blue sphere
     scene.objects.push_back(new Sphere(0.65f, Vec3(-1.25f, 0.65f, 4),
@@ -32,17 +32,17 @@ Scene initializeScene() {
         0.25f, 6.0f, 0.0f,
         0.0f,
         Vec3(0,0.0f,0),
-        Material(Color(0.1f,0.2f,1.0f),0.5f,0.2f)
+        Material(Color(0.1f,0.2f,1.0f),0.2f,0.8f)
     )
 );
 
     // Emissive light sphere
     scene.objects.push_back(new Sphere(0.5f, Vec3(0, 4.0f, 3),
         Material::Emissive(Color(1.0f, 0.95f, 0.8f), 15.0f)));
-
-    // Emissive light sphere
-    scene.objects.push_back(new Sphere(0.5f, Vec3(16, 4.0f, 3),
-        Material::Emissive(Color(1.0f, 0.95f, 0.8f), 15.0f)));
+    //
+    // // Emissive light sphere
+    // scene.objects.push_back(new Sphere(0.5f, Vec3(16, 4.0f, 3),
+    //     Material::Emissive(Color(1.0f, 0.95f, 0.8f), 15.0f)));
 
     return scene;
 }
