@@ -28,6 +28,7 @@ public:
         SDL_SetWindowRelativeMouseMode(window, true);
 
         std::vector<Color> accumulator(W * H, Color(0,0,0));
+
         std::vector<uint8_t> pixels(W * H * 3);
 
         float moveSpeed = 0.1f;
@@ -139,7 +140,7 @@ public:
 
 Color tracePath(const Ray& ray, int depth, int maxDepth) {
         auto skyColor = [&](const Vec3& dir) {
-            return Color(0.0f,0.0f,0.0f);
+            return Color(0.01f,0.01f,0.01f);
             float t = std::max(0.0f, dir.y);
             return Color(1.0f,1.0f,1.0f) * (1.0f-t) + Color(0.3f,0.6f,1.0f) * t;
         };
