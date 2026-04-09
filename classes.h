@@ -13,7 +13,7 @@ inline float randomFloat() {
     return dist(rng);
 }
 
-// ─── Math helpers ─────────────────────────────────────────────────────────────
+
 const float PI = 3.14159265358979323846f;
 
 inline float ggxNDF(float NdotH, float alpha2) {
@@ -100,8 +100,7 @@ public:
         return (tangent * x + normal * y + binormal * z).normalize();
     }
 
-    // GGX importance sample — for specular bounces
-    // Returns the HALFWAY vector, not the bounce direction
+
     static Vec3 ggxSample(const Vec3 &normal, float roughness) {
         float alpha = roughness * roughness;
         float alpha2 = alpha * alpha;
@@ -109,7 +108,7 @@ public:
         float xi1 = randomFloat();
         float xi2 = randomFloat();
 
-        // Sample spherical coords of halfway vector
+
         float theta = atan(alpha * sqrt(xi1 / std::max(1e-6f, 1.0f - xi1)));
         float phi = 2.0f * PI * xi2;
 
@@ -117,7 +116,7 @@ public:
         float cosTheta = cos(theta);
         Vec3 h(sinTheta * cos(phi), cosTheta, sinTheta * sin(phi));
 
-        // Transform to world space using normal as up axis
+
         Vec3 tangent, binormal;
         buildBasis(normal, tangent, binormal);
         return (tangent * h.x + normal * h.y + binormal * h.z).normalize();
@@ -129,7 +128,7 @@ public:
     Vec3 origin, direction;
 
     Ray() : origin(), direction() {
-    } // Fixed: was declared but never defined
+    }
 
     Ray(const Vec3 &origin, const Vec3 &direction)
         : origin(origin), direction(direction) {
@@ -143,13 +142,14 @@ public:
     float focal_length = 600.0f;
     int width = 1920;
     int height = 1080;
-    float yaw = 0.0f; // horizontal angle (for mouse look)
-    float pitch = 0.0f; // vertical angle   (for mouse look)
+    // mouse look
+    float yaw = 0.0f; // horizontal angle
+    float pitch = 0.0f; // vertical angle
 
     Camera() : origin(0, 0, 0), direction(0, 0, 1) {
     }
 
-    // Recompute direction from yaw and pitch
+
     void updateDirection() {
         direction = Vec3(
             cos(pitch) * sin(yaw),
@@ -237,8 +237,8 @@ public:
     Color color;
     Color emission;
     float emissionStrength = 0.0f;
-    float roughness = 1.0f; // 0 = mirror, 1 = fully diffuse
-    float metallic = 0.0f; // 0 = plastic, 1 = metal
+    float roughness = 1.0f;
+    float metallic = 0.0f;
 
     Material() = default;
 
@@ -321,76 +321,6 @@ public:
 };
 
 
-class Sine3DFunction : public RObj {
-public:
-    float ya, yb, yc;
-    float xa, xb, xc;
-    float d;
-
-    explicit Sine3DFunction(const float &ya, const float &yb, const float &yc,
-                            const float &xa, const float &xb, const float &xc,
-                            const float &d,
-                            const Vec3 &origin, const Material &material)
-        : RObj(origin, material),
-          ya(ya), yb(yb), yc(yc),
-          xa(xa), xb(xb), xc(xc),
-          d(d) {}
-
-    float F(float t, const Vec3& O, const Vec3& D) const
-    {
-        return O.y + t*D.y
-            - xa * sin(xb*(O.x + t*D.x) + xc)
-            - ya * sin(yb*(O.z + t*D.z) + yc)
-            - d;
-    }
-
-    float dF(float t, const Vec3& O, const Vec3& D) const
-    {
-        return D.y
-            - xa * xb * D.x * cos(xb*(O.x + t*D.x) + xc)
-            - ya * yb * D.z * cos(yb*(O.z + t*D.z) + yc);
-    }
-
-    HitResult hit(const Ray& ray) const override {
-        Vec3 O = ray.origin - origin;
-        Vec3 D = ray.direction;
-
-        // Step 1: ray march to find sign change bracket
-        float tStep = 0.05f;
-        float tMax  = 4.0f;
-        float tPrev = 0.001f;
-        float fPrev = F(tPrev, O, D);
-        float t     = tPrev;
-
-        bool found = false;
-        for (; t < tMax; t += tStep) {
-            float f = F(t, O, D);
-            if (fPrev * f < 0.0f) { found = true; break; } // sign change!
-            fPrev = f;
-            tPrev = t;
-        }
-        if (!found) return HitResult::NoHit;
-
-        // Step 2: refine with Newton-Raphson in the bracket [tPrev, t]
-        float tMid = (tPrev + t) * 0.5f;
-        for (int i = 0; i < 16; i++) {
-            float f  = F(tMid, O, D);
-            float df = dF(tMid, O, D);
-            if (fabs(df) < 1e-6f) break;
-            tMid -= f / df;
-            tMid = std::max(tPrev, std::min(t, tMid)); // clamp to bracket
-        }
-        if (tMid <= 0.001f) return HitResult::NoHit;
-
-        Vec3 p     = ray.origin + ray.direction * tMid;
-        Vec3 local = p - origin;
-        Vec3 n;
-        n.x = -xa * xb * cos(xb * local.x + xc);
-        n.y = 1.0f;
-        n.z = -ya * yb * cos(yb * local.z + yc);
-        return {p, ray.origin, n.normalize(), material, 0, 0};
-    }
-};
 
 class Rectangle : public RObj {
 public:
