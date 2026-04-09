@@ -10,8 +10,7 @@ class Renderer {
 public:
     Scene scene;
 
-    explicit Renderer(Scene &&s) : scene(std::move(s)) {
-    }
+    explicit Renderer(Scene&& s) : scene(std::move(s)) {}
 
     void render() {
         int W = scene.camera.width;
@@ -28,16 +27,7 @@ public:
         SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_LINEAR);
         SDL_SetWindowRelativeMouseMode(window, true);
 
-        // Per-pixel state
-        std::vector<Color> accumulator(W * H, Color(0, 0, 0));
-        std::vector<Color> accumSq(W * H, Color(0, 0, 0));
-        std::vector<float> semPerPixel(W * H, 1e6f); // current SEM estimate
-        std::vector<int> samplesPer(W * H, 0);
-        std::vector<bool> converged(W * H, false);
-
-        const int minSamples = 64;
-        const float semThreshold = 0.01f; // converged when SEM < this
-        const int budgetPerFrame = 4; // max extra samples for noisy pixels
+        std::vector<Color> accumulator(W * H, Color(0,0,0));
         std::vector<uint8_t> pixels(W * H * 3);
 
         float moveSpeed = 0.1f;
@@ -80,10 +70,7 @@ public:
             if (keys[SDL_SCANCODE_Q]) pos = pos - up * moveSpeed;
 
             if (cameraMoved) {
-                std::fill(accumulator.begin(), accumulator.end(), Color(0, 0, 0));
-                std::fill(accumSq.begin(), accumSq.end(), Color(0, 0, 0));
-                std::fill(converged.begin(), converged.end(), false);
-                std::fill(samplesPer.begin(), samplesPer.end(), 0);
+                std::fill(accumulator.begin(), accumulator.end(), Color(0,0,0));
                 sampleCount = 0;
                 cameraMoved = false;
             }
@@ -99,118 +86,26 @@ public:
             #pragma omp parallel for schedule(dynamic, 4)
             for (int y = 0; y < H; y++) {
                 for (int x = 0; x < W; x++) {
-                    int i = y * W + x;
+                    float jx = randomFloat() - 0.5f;
+                    float jy = randomFloat() - 0.5f;
 
-                    if (samplesPer[i] == 0) {
-                        float px = (x - W / 2.0f);
-                        float py = (H / 2.0f - y);
-                        Vec3 testDir = (camRight * px + camUp * py + camDir * pz).normalize();
-                        Ray  testRay(scene.camera.origin, testDir);
-                        if (!traceRay(testRay).did_hit) {
-                            // Pure sky pixel — one sample, never revisit
-                            Color sky = tracePath(testRay, 0, 8);
-                            samplesPer[i]  = minSamples; // skip warmup
-                            accumulator[i] = sky;
-                            accumSq[i]     = Color(sky.r*sky.r, sky.g*sky.g, sky.b*sky.b);
-                            semPerPixel[i] = 0.0f;
-                            converged[i]   = true;
-
-                            Color display = sky.reinhardTonemap().gammaCorrect().clampOne();
-                            int idx = i * 3;
-                            pixels[idx+0] = (uint8_t)(display.r * 255);
-                            pixels[idx+1] = (uint8_t)(display.g * 255);
-                            pixels[idx+2] = (uint8_t)(display.b * 255);
-                            continue; // skip the rest of the pixel loop entirely
-                        }
-                    }
-
-                    // How many samples to take this frame for this pixel
-                    int toTake = 1; // always at least one until minSamples
-                    if (samplesPer[i] >= minSamples) {
-                        if (converged[i]) {
-                            toTake = 0;
-                        } else {
-                            // Spend more samples where SEM is high
-                            // SEM of 0.1 -> 10x budget, SEM of 0.01 -> 1x
-                            float ratio = semPerPixel[i] / semThreshold;
-                            toTake = std::min(budgetPerFrame, (int) std::ceil(ratio));
-                        }
-                    }
-
-                    for (int s = 0; s < toTake; s++) {
-                        float jx = randomFloat() - 0.5f;
-                        float jy = randomFloat() - 0.5f;
-                        float px = (x + jx - W / 2.0f);
-                        float py = (H / 2.0f - (y + jy));
+                    // Map pixel to camera space, then rotate into world space
+                    float px = (float)(x - W / 2);
+                    float py = (float)(H / 2 - y);
 
                         Vec3 worldDir = (camRight * px + camUp * py + camDir * pz).normalize();
                         Ray ray(scene.camera.origin, worldDir);
 
-                        Color sample = tracePath(ray, 0, 8);
-                        samplesPer[i]++;
-                        accumulator[i] += sample;
-                        accumSq[i] += Color(sample.r * sample.r,
-                                            sample.g * sample.g,
-                                            sample.b * sample.b);
-                    }
+                    Color sample = tracePath(ray, 0,8);
+                    accumulator[y * W + x] += sample;
 
-                    // Recompute SEM from current state
-                    int   n    = samplesPer[i];
-                    if (n >= 2) {
-                        Color mean = accumulator[i] * (1.0f / n);
-                        Color sq   = accumSq[i]     * (1.0f / n);
-                        float var  = ((sq.r - mean.r*mean.r) +
-                                      (sq.g - mean.g*mean.g) +
-                                      (sq.b - mean.b*mean.b)) / 3.0f;
-                        var = std::max(0.0f, var);
+                    Color avg     = accumulator[y * W + x] * (1.0f / sampleCount);
+                    Color display = avg.reinhardTonemap().gammaCorrect().clampOne();
 
-                        float meanLum = (mean.r + mean.g + mean.b) / 3.0f;
-                        semPerPixel[i] = sqrt(var / n);
-
-                        // Relative SEM: uncertainty as a fraction of the pixel's own brightness.
-                        // A dark pixel that hasn't found the light yet will have a huge relativeSEM
-                        // the moment any future sample returns non-zero.
-                        float relativeSEM = semPerPixel[i] / (meanLum + 0.001f);
-
-                        // Dark pixels need far more samples before we trust they're truly dark.
-                        // If meanLum ~ 0, adaptiveMin grows large; if meanLum ~ 1, it stays at minSamples.
-                        int adaptiveMin = (int)(minSamples * (1.0f + 0.05f / (meanLum + 0.001f)));
-                        adaptiveMin = std::min(adaptiveMin, 512); // cap so it doesn't run forever
-
-                        if (n >= adaptiveMin
-                            && semPerPixel[i] < semThreshold   // absolute confidence
-                            && relativeSEM    < 0.5f)          // relative confidence
-                                converged[i] = true;
-                    }
-                    // Display
-                    if (n > 0) {
-                        Color avg = accumulator[i] * (1.0f / n);
-                        Color display = avg.reinhardTonemap().gammaCorrect().clampOne();
-                        int idx = i * 3;
-                        if (keys[SDL_SCANCODE_TAB]) {
-                            // Green   = converged
-                            // Red     = still sampling (brightness shows relative SEM urgency)
-                            // Yellow  = in minSamples warmup period
-                            float urgency = std::min(1.0f, semPerPixel[i] / semThreshold);
-                            if (n < minSamples) {
-                                pixels[idx+0] = 255;
-                                pixels[idx+1] = 255;
-                                pixels[idx+2] = 0;   // yellow = warming up
-                            } else if (converged[i]) {
-                                pixels[idx+0] = 0;
-                                pixels[idx+1] = 255;
-                                pixels[idx+2] = 0;   // green = done
-                            } else {
-                                pixels[idx+0] = (uint8_t)(urgency * 255);
-                                pixels[idx+1] = 0;
-                                pixels[idx+2] = 0;   // red, brighter = more urgent
-                            }
-                        } else {
-                            pixels[idx+0] = (uint8_t)(display.r * 255);
-                            pixels[idx+1] = (uint8_t)(display.g * 255);
-                            pixels[idx+2] = (uint8_t)(display.b * 255);
-                        }
-                    }
+                    int idx = (y * W + x) * 3;
+                    pixels[idx + 0] = static_cast<uint8_t>(display.r * 255);
+                    pixels[idx + 1] = static_cast<uint8_t>(display.g * 255);
+                    pixels[idx + 2] = static_cast<uint8_t>(display.b * 255);
                 }
             }
 
