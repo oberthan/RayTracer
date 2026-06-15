@@ -148,7 +148,7 @@ public:
         HitResult hit = traceRay(ray);
         if (!hit.did_hit) return skyColor(ray.direction);
 
-        // Emissive surface — return emission directly
+
         if (hit.material.emissionStrength > 0.0f)
             return hit.material.emission * hit.material.emissionStrength;
 
@@ -160,11 +160,11 @@ public:
         float alpha = rough * rough;
         float alpha2 = alpha * alpha;
 
-        // F0: metals use albedo color, dielectrics use 0.04
+
         Color F0 = Color(0.04f, 0.04f, 0.04f) * (1.0f - hit.material.metallic)
                    + hit.material.color * hit.material.metallic;
 
-        // Fresnel at normal incidence decides specular probability
+
         float F0avg = (F0.r + F0.g + F0.b) / 3.0f;
         float NdotV = std::max(0.0f, normal * v);
         float fresnel = F0avg + (1.0f - F0avg) * pow(1.0f - NdotV, 5.0f);
@@ -175,7 +175,7 @@ public:
         Color brdf;
 
         if (randomFloat() < specProb) {
-            // ── Specular bounce ──────────────────────────────────────────────
+
             Vec3 h = Vec3::ggxSample(normal, rough);
             bounceDir = (ray.direction - h * 2.0f * (ray.direction * h)).normalize();
 
@@ -189,27 +189,27 @@ public:
             Color F = schlickFresnel(VdotH, F0);
             float G = smithG(NdotV, NdotL, alpha);
 
-            // Cook-Torrance: D*F*G / (4 * NdotV * NdotL)
+
             float denom = std::max(1e-6f, 4.0f * NdotV * NdotL);
             brdf = F * (D * G / denom);
 
-            // GGX PDF: D * NdotH / (4 * VdotH)
+
             pdf = (D * NdotH) / std::max(1e-6f, 4.0f * VdotH);
             pdf *= specProb;
         } else {
-            // ── Diffuse bounce ───────────────────────────────────────────────
+
             bounceDir = Vec3::randomCosineHemisphere(normal);
 
             float NdotL = std::max(0.0f, normal * bounceDir);
             float VdotH = NdotV;
             Color F = schlickFresnel(VdotH, F0);
 
-            // Lambertian BRDF: albedo / PI, scaled by (1-F) and (1-metallic)
+
             brdf = (Color(1, 1, 1) - F) * hit.material.color
                    * (1.0f / PI)
                    * (1.0f - hit.material.metallic);
 
-            // Cosine hemisphere PDF: NdotL / PI
+
             pdf = std::max(0.0f, normal * bounceDir) / PI;
             pdf *= (1.0f - specProb);
         }
@@ -221,11 +221,11 @@ public:
         for (const auto &obj: scene.objects) {
             if (obj->material.emissionStrength <= 0.0f) continue;
 
-            // Sample a point on the light (for sphere lights)
+
             auto *sphere = dynamic_cast<Sphere *>(obj);
             if (!sphere) continue;
 
-            // Random point on light sphere surface
+
             Vec3 lightSampleDir = Vec3::randomCosineHemisphere(
                 (sphere->origin - hit.point).normalize());
             Vec3 lightPoint = sphere->origin + lightSampleDir * sphere->radius;
@@ -237,11 +237,11 @@ public:
             float NdotL = normal * l;
             if (NdotL <= 0.0f) continue;
 
-            // Shadow ray
+
             Ray shadowRay(hit.point + normal * 0.001f, l);
             HitResult shadowHit = traceRay(shadowRay);
 
-            // Only lit if nothing blocks the path to the light
+
             bool blocked = shadowHit.did_hit &&
                            (shadowHit.point - hit.point).length() < lightDist - 0.01f;
             if (blocked) continue;
@@ -255,7 +255,7 @@ public:
         Ray bounceRay(hit.point + normal * 0.001f, bounceDir);
         Color incoming = tracePath(bounceRay, depth + 1, maxDepth);
 
-        // Rendering equation: brdf * Li * NdotL / pdf
+
         return directLight + brdf * incoming * (NdotL / pdf);
     }
 };
