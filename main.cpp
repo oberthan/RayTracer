@@ -11,9 +11,9 @@ Scene initializeScene() {
     Scene scene;
     scene.camera.origin = Vec3(0, 1, 0);
     scene.camera.direction = Vec3(0, 0, 1);
-    scene.camera.width = 880;
+    scene.camera.width = 220;
     scene.camera.height = scene.camera.width*9/16;
-    scene.camera.focal_length = 300;
+    scene.camera.focal_length = 100;
 
     // Diffuse sphere
     scene.objects.push_back(new Sphere(0.65f, Vec3(-1.25f, 0.65f, 4),
@@ -21,7 +21,7 @@ Scene initializeScene() {
 
     // green metal sphere
     scene.objects.push_back(new Sphere(1.5f, Vec3(1.75f, 1.5f, 4.5f),
-        Material(Color(0.0f, 0.8f, 0.0f), 0.2f, 1.0f)));
+        Material(Color(0.1f, 0.8f, 0.8f), 0.2f, 1.0f)));
 
     // gulv
     scene.objects.push_back(new Rectangle(Vec3(4, 0, 0), Vec3(-4,0,0), Vec3(4,0, 10), Material(Color(0.99f,1,1.0f), 1, 0)));
